@@ -1,22 +1,27 @@
 #!/system/bin/sh
-[ "`whoami`" = "root" ] || ( su -c debian; exit)
-
 DEBIAN=/data/local/mnt/Linux
 DEBIAN_SHELL=/bin/bash
 
-mountpoint -q $DEBIAN/proc || mount -t proc proc $DEBIAN/proc
-mountpoint -q $DEBIAN/dev || busybox mount --rbind /dev $DEBIAN/dev
+for mount_point in /dev /sys /proc; do
+    if ! mountpoint -q $DEBIAN/$mount_point; then
+        for sub_mount_point in `grep " $mount_point" /proc/mounts | cut -f2 -d" "`; do
+            busybox mount --bind $sub_mount_point $DEBIAN/$sub_mount_point
+        done
+    fi
+done
 [ -d $DEBIAN/dev/shm ] || mkdir $DEBIAN/dev/shm
 mountpoint -q $DEBIAN/dev/shm || mount -t tmpfs -o rw,nosuid,nodev tmpfs $DEBIAN/dev/shm
-mountpoint -q $DEBIAN/sys || busybox mount --rbind /sys $DEBIAN/sys
-mountpoint -q $DEBIAN/mnt || busybox mount --rbind /storage $DEBIAN/mnt
+
+mountpoint -q $DEBIAN/mnt || busybox mount --bind /storage/sdcard0 $DEBIAN/mnt
+
 mountpoint -q $DEBIAN/run || mount -t tmpfs -o rw,nosuid,mode=755 tmpfs $DEBIAN/run
 [ -d $DEBIAN/run/user ] || mkdir $DEBIAN/run/user
 mountpoint -q $DEBIAN/run/user || mount -t tmpfs -o rw,nosuid,nodev,noexec,size=102400k,mode=755 tmpfs $DEBIAN/run/user
 [ -d $DEBIAN/run/lock ] || mkdir $DEBIAN/run/lock
 mountpoint -q $DEBIAN/run/lock || mount -t tmpfs -o rw,nosuid,nodev,noexec,size=5120k tmpfs $DEBIAN/run/lock
 
-DEBIAN_SHELL_COMMAND="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh TERM=xterm HOME=/root SHELL=$DEBIAN_SHELL /system/xbin/chroot $DEBIAN $DEBIAN_SHELL"
+
+DEBIAN_SHELL_COMMAND="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh TERM=xterm HOME=/root SHELL=$DEBIAN_SHELL LD_LIBRARY_PATH='' LD_PRELOAD='' /system/xbin/chroot $DEBIAN $DEBIAN_SHELL"
 if [[ -n "$*" ]] ; then
     eval "$DEBIAN_SHELL_COMMAND -c '$*'"
 else

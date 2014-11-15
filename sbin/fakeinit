@@ -11,7 +11,6 @@ case $1 in
     ;;
     esac
     [ -f '/run/fakeinitctl' ] && [ `cat /run/fakeinitctl` = $S ] && exit 1
-    echo $S > /run/fakeinitctl
     for script in `ls /etc/rc$S.d`; do
         if [ ${script::1} = K ]; then
             /etc/rc$S.d/$script stop
@@ -19,6 +18,7 @@ case $1 in
             /etc/rc$S.d/$script start
         fi
     done
+    echo $S > /run/fakeinitctl
 ;;
 *)
     echo 'Usage: fakeinit {0|1|2|3|4|5|6|S|s}'
